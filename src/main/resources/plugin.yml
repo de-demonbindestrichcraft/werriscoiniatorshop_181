@@ -1,0 +1,8 @@
+name: WerrisCoiniatorShop
+main: de.fireearth.werri.werriscoiniator.shop.WerrisCoiniatorShop
+version: 0.1
+author: Werri
+commands:
+  wcoinshop:
+    description: wcoinshop help By Werri
+    usage: /<command>
