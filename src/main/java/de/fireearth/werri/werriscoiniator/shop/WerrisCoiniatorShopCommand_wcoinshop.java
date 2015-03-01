@@ -1,6 +1,8 @@
 package de.fireearth.werri.werriscoiniator.shop;
 
 import com.nitinsurana.bitcoinlitecoin.rpcconnector.RPCApp;
+import de.demonbindestrichcraft.lib.bukkit.wbukkitlib.common.files.ConcurrentConfig;
+import de.demonbindestrichcraft.lib.bukkit.wbukkitlib.common.files.Config;
 import de.demonbindestrichcraft.werri.werriscoininatorregister.interfaces.VaultEconomy;
 import de.demonbindestrichcraft.werri.werriscoininatorregister.interfaces.WCR_MyEconomy;
 import de.demonbindestrichcraft.werri.werriscoininatorregister.interfaces.WerrisCoiniatorEconomy;
@@ -12,6 +14,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.milkbowl.vault.economy.EconomyResponse;
@@ -35,13 +38,22 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
     private final WerrisRPCAppInterface werrisRPCAppInterface;
     private final WerrisCoiniatorEconomy werrisCoiniatorEconomy;
     private final VaultEconomy vaultEconomy;
-
+    private String dir = "plugins"+File.separator+"WerrisCoiniatorShop"+File.separator+"WerrisCoiniatorShop.settings";
+    private File file = null;
+    private ConcurrentConfig config = null;
+    private Map<String,String> settings = null;
+    private boolean PlayersCanBuyItems=false;
+    private boolean PlayersCanSellItems=false;
+    private boolean PlayersCanBuyCurrency=false;
+    private boolean PlayersCanSellCurrency=false;
+    
     public WerrisCoiniatorShopCommand_wcoinshop(WerrisCoiniatorShop plugin) {
         this.plugin = plugin;
         this.werrisCoiniatorShopItems = this.plugin.getWerrisCoiniatorShopItems();
         this.werrisCoiniatorEconomy = werrisCoiniatorShopItems.getRegister().getRegister().getWCR_MyEconomy().getWerrisCoiniatorEconomy();
         this.werrisRPCAppInterface = werrisCoiniatorEconomy.getWerrisRPCAppInterface();
         this.vaultEconomy = werrisCoiniatorShopItems.getRegister().getRegister().getWCR_MyEconomy().getVaultEconomy();
+        this.reload();
     }
 
     @Override
@@ -67,6 +79,10 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
                         return true;
                     }
                 } else if (split[0].equalsIgnoreCase("buyitem")) {
+                    if(!hasPermission(player, split[0]))
+                    {
+                        return true;
+                    }
                     try {
                         Double e = Double.parseDouble(split[1]);
                         if (!werrisCoiniatorEconomy.has(werrisRPCAppInterface.getName(player), e)) {
@@ -91,6 +107,10 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
                         return true;
                     }
                 } else if (split[0].equalsIgnoreCase("buycurrency")) {
+                    if(!hasPermission(player, split[0]))
+                    {
+                        return true;
+                    }
                     try {
                         Double e = Double.parseDouble(split[1]);
                         if (!werrisCoiniatorEconomy.has(werrisRPCAppInterface.getName(player), e)) {
@@ -110,6 +130,10 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
                         return true;
                     }
                 } else if (split[0].equalsIgnoreCase("sellitem")) {
+                    if(!hasPermission(player, split[0]))
+                    {
+                        return true;
+                    }
                     try {
                         Double e = Double.parseDouble(split[1]);
                         boolean containsKey = werrisCoiniatorShopItems.getItemStackMap().containsKey(e);
@@ -144,6 +168,10 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
                         return true;
                     }
                 } else if (split[0].equalsIgnoreCase("sellcurrency")) {
+                    if(!hasPermission(player, split[0]))
+                    {
+                        return true;
+                    }
                     try {
                         Double e = Double.parseDouble(split[1]);
                         boolean containsKey = werrisCoiniatorShopItems.getKeyItemsMap().containsKey(e);
@@ -173,12 +201,21 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
                     player.sendMessage("/wcoinshop sellitem <amount> - sell a item listed by the amount of coins!");
                     player.sendMessage("/wcoinshop info - listed infos of the current currency!");
                     player.sendMessage("/wcoinshop list <page> - listed items respectively currency from the shop!");
+                    player.sendMessage("/wcoinshop reload - reloaded the shops config!");
                     player.sendMessage("----------------------------------");
                 } else if (split[0].equalsIgnoreCase("info")) {
                     player.sendMessage("---WerrisCoinatorShop v1.0 beta---");
                     player.sendMessage("current economy: " + plugin.getEconomyName());
                     player.sendMessage("current coins: " + plugin.getCoinName());
                     player.sendMessage("----------------------------------");
+                } else if (split[0].equalsIgnoreCase("reload")) {
+                    if(!player.isOp())
+                    {
+                         player.sendMessage("You don't have the permission to reload the shop!");
+                         return true;
+                    }
+                    this.reload();
+                    player.sendMessage("You have reloaded the shop!");
                 }
             }
             break;
@@ -191,5 +228,139 @@ public class WerrisCoiniatorShopCommand_wcoinshop implements CommandExecutor {
         }
 
         return true;
+    }
+    
+    public final synchronized void reload()
+    {
+        settings = new ConcurrentHashMap<String, String>();
+        file = new File(dir);
+        if(!file.exists())
+        {
+            settings.put("PlayersCanBuyItems", "true");
+            settings.put("PlayersCanSellItems", "true");
+            settings.put("PlayersCanBuyCurrency", "true");
+            settings.put("PlayersCanSellCurrency", "true");
+            config = new ConcurrentConfig(file);
+            config.update(settings);
+            config.save("=");
+        } else {
+            config = new ConcurrentConfig(file);
+            config.load(file, "=");
+            Map<String, String> copyOfProperties = config.getCopyOfProperties();
+            settings.putAll(copyOfProperties);
+        }
+        if(!settings.containsKey("PlayersCanBuyItems"))
+        {
+            settings.put("PlayersCanBuyItems", "true");
+            config.update(settings);
+            config.save("=");
+        }
+        if(!settings.containsKey("PlayersCanSellItems"))
+        {
+            settings.put("PlayersCanSellItems", "true");
+            config.update(settings);
+            config.save("=");
+        }
+        if(!settings.containsKey("PlayersCanBuyCurrency"))
+        {
+            settings.put("PlayersCanBuyCurrency", "true");
+            config.update(settings);
+            config.save("=");
+        }
+        if(!settings.containsKey("PlayersCanSellCurrency"))
+        {
+            settings.put("PlayersCanSellCurrency", "true");
+            config.update(settings);
+            config.save("=");
+        }
+        try{
+            PlayersCanBuyItems=Boolean.parseBoolean(settings.get("PlayersCanBuyItems"));
+        } catch (Throwable ex)
+        {
+            PlayersCanBuyItems=true;
+        }
+        try{
+            PlayersCanSellItems=Boolean.parseBoolean(settings.get("PlayersCanSellItems"));
+        } catch (Throwable ex)
+        {
+            PlayersCanSellItems=true;
+        }
+        try{
+            PlayersCanBuyCurrency=Boolean.parseBoolean(settings.get("PlayersCanBuyCurrency"));
+        } catch (Throwable ex)
+        {
+            PlayersCanBuyCurrency=true;
+        }
+        try{
+            PlayersCanSellCurrency=Boolean.parseBoolean(settings.get("PlayersCanSellCurrency"));
+        } catch (Throwable ex)
+        {
+            PlayersCanSellCurrency=true;
+        }
+    }
+    
+    private boolean hasPermission(Player player, String command)
+    {
+        boolean havePermission=true;
+        if(command==null||command.isEmpty())
+        {
+            havePermission=false;
+        }
+        if(!(player instanceof Player))
+        {
+            havePermission=false;
+        }
+        if(!havePermission)
+        {
+            return false;
+        }
+        if(command.equalsIgnoreCase("buyitem"))
+        {
+            if(PlayersCanBuyItems)
+            {
+                return true;
+            } else {
+                putMessageIfHaveNotPermmission(player, false);
+                return false;
+            }
+        } else if(command.equalsIgnoreCase("sellitem"))
+        {
+            if(PlayersCanSellItems)
+            {
+                return true;
+            } else {
+                putMessageIfHaveNotPermmission(player, false);
+                return false;
+            }
+        } else if(command.equalsIgnoreCase("buycurrency"))
+        {
+            if(PlayersCanBuyCurrency)
+            {
+                return true;
+            } else {
+                putMessageIfHaveNotPermmission(player, false);
+                return false;
+            }
+        } else if(command.equalsIgnoreCase("sellcurrency"))
+        {
+            if(PlayersCanSellCurrency)
+            {
+                return true;
+            } else {
+                putMessageIfHaveNotPermmission(player, false);
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    
+    private void putMessageIfHaveNotPermmission(Player player, boolean havePermission)
+    {
+        if(!havePermission)
+        {
+            player.sendMessage("You don't have the permission to do that!");
+            return;
+        }
     }
 }

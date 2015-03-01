@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -38,12 +39,12 @@ public class WerrisCoiniatorShopItems {
     public WerrisCoiniatorShopItems(WerrisCoiniatorShop werrisCoiniatorShop, Map<String, String> items) {
         this.werrisCoiniatorShop = werrisCoiniatorShop;
         this.werrisCoiniatorRegister = werrisCoiniatorShop.getWerrisCoiniatorRegister();
-        Map<Double, Map<Integer, Integer>> blockKeyItems = new ConcurrentHashMap<Double, Map<Integer, Integer>>();
+                Map<Double, Map<Integer, Integer>> blockKeyItems = new ConcurrentHashMap<Double, Map<Integer, Integer>>();
         Map<Double, Map<Material, Integer>> blockMaterialItems = new ConcurrentHashMap<Double, Map<Material, Integer>>();
-        Map<String, String> myitems = new HashMap<String, String>(items);
+        Map<String, String> myitems = new ConcurrentHashMap<String, String>(items);
         Set<String> keySet = new HashSet<String>(myitems.keySet());
-        List<Double> keyItemsList = new ArrayList<Double>();
-        List<Double> itemsList = new ArrayList<Double>();
+        List<Double> keyItemsList = new CopyOnWriteArrayList<Double>();
+        List<Double> itemsList = new CopyOnWriteArrayList<Double>();
         Iterator iter = keySet.iterator();
         while (iter.hasNext()) {
             String next = (String) iter.next();
@@ -76,7 +77,7 @@ public class WerrisCoiniatorShopItems {
                     Material m = null;
                     try {
                         a = Integer.parseInt(split[0]);
-                        if (a < 0) {
+                        if (a <= 0) {
                             a = -1;
                             continue;
                         }
@@ -84,6 +85,8 @@ public class WerrisCoiniatorShopItems {
                         a = -1;
                         try {
                             m = Material.valueOf(split[0].toUpperCase());
+                            if(m==Material.AIR)
+                                continue;
                         } catch (Exception ex2) {
                             continue;
                         }
@@ -116,7 +119,7 @@ public class WerrisCoiniatorShopItems {
         this.items = getGeneratedItemStackMap(blockKeyItems,blockMaterialItems);
         this.itemsList = listItems(keyItemsList, itemsList);
     }
-
+    
     private Map<Double, ItemStack> getGeneratedItemStackMap(Map<Double, Map<Integer, Integer>> blockKeyItems, Map<Double, Map<Material, Integer>> blockMaterialItems) {
         Map<Double, ItemStack> itemStackMap = new ConcurrentHashMap<Double, ItemStack>();
         Set<Double> my = new HashSet<Double>(blockKeyItems.keySet());
@@ -138,7 +141,12 @@ public class WerrisCoiniatorShopItems {
             if (t.hasNext()) {
                 n = (Integer) t.next();
                 e = get.get(n);
-                itemStackMap.put(next, ItemBackwardsCompatibility.getItemStack(e, n));
+                ItemStack temp=ItemBackwardsCompatibility.getItemStack(e, n);
+                if(!ItemBackwardsCompatibility.isValidItemStack(temp))
+                {
+                    continue;
+                }
+                itemStackMap.put(next, temp);
             }
         }
         my = new HashSet<Double>(blockMaterialItems.keySet());
@@ -157,7 +165,10 @@ public class WerrisCoiniatorShopItems {
             if (t.hasNext()) {
                 c = (Material) t.next();
                 e = get2.get(c);
-                itemStackMap.put(next, new ItemStack(c, e));
+                ItemStack temp = new ItemStack(c, e);
+                if(!ItemBackwardsCompatibility.isValidItemStack(temp))
+                    continue;
+                itemStackMap.put(next, temp);
             }
         }
         return itemStackMap;
@@ -175,9 +186,9 @@ public class WerrisCoiniatorShopItems {
     
     private List<String> listItems(List<Double> keyItemsList, List<Double> itemsList)
     {
-        List<String> items = new ArrayList<String>();
-        List<Double> ki = new ArrayList<Double>(keyItemsList);
-        List<Double> il = new ArrayList<Double>(itemsList);
+        List<String> items = new CopyOnWriteArrayList<String>();
+        List<Double> ki = new CopyOnWriteArrayList<Double>(keyItemsList);
+        List<Double> il = new CopyOnWriteArrayList<Double>(itemsList);
         int kil = ki.size();
         int ill = il.size();
         double t = 0;
@@ -205,7 +216,7 @@ public class WerrisCoiniatorShopItems {
     
     public void sendPlayerList(Player player, int page)
     {
-        List<String> al = new ArrayList<String>(itemsList);
+        List<String> al = new CopyOnWriteArrayList<String>(itemsList);
         int size = al.size();
         int div = size / 5;
         int mod = size % 5;
@@ -224,6 +235,7 @@ public class WerrisCoiniatorShopItems {
             player.sendMessage(al.get(i));
         }
     }
+  
     
     public WerrisCoiniatorRegister getRegister()
     {

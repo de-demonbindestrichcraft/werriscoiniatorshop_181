@@ -173,4 +173,15 @@ public class ItemBackwardsCompatibility {
             toold = true;
         }
     }
+    
+    public static boolean isValidItemStack(ItemStack itemStack)
+    {
+        if(!(itemStack instanceof ItemStack))
+            return false;
+        if(itemStack.getType()==Material.AIR)
+        {
+            return false;
+        }
+        return true;
+    }
 }
